@@ -1,0 +1,7 @@
+click>=8.0
+rich>=13.0
+requests>=2.28
+ytmusicapi>=1.10
+yt-dlp>=2024.0
+spotipy>=2.24
+rapidfuzz>=3.0
