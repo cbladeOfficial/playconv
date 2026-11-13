@@ -31,3 +31,4 @@ venv.bak/
 *.csv
 *.m3u
 *.m3u8
+*.spec
