@@ -381,3 +381,31 @@ def show_final_summary(summary: ConversionSummary, elapsed_seconds: float = 0.0)
     console.print()
     console.print(panel)
     console.print()
+
+
+def display_exit_message(interrupted: bool = True):
+    """
+    Renders a sleek, pleasant exiting message on Ctrl+C (KeyboardInterrupt) or manual exit.
+    Strictly zero emojis, high-color solid box badge, graceful and calm terminal aesthetics.
+    """
+    console.print()
+    if interrupted:
+        badge = make_box_badge("INTERRUPTED", "#b45309", "white")
+        msg = Text()
+        msg.append("  ")
+        msg.append_text(badge)
+        msg.append("  ")
+        msg.append("Operation cancelled by user (Ctrl+C). ", style="bold bright_white")
+        msg.append("Exiting cleanly.", style="dim #94a3b8")
+        console.print(msg)
+        console.print("  [dim #64748b]Goodbye! Thanks for using PlayConv.[/dim #64748b]\n")
+    else:
+        badge = make_box_badge("EXIT", "#334155", "white")
+        msg = Text()
+        msg.append("  ")
+        msg.append_text(badge)
+        msg.append("  ")
+        msg.append("PlayConv closed gracefully.", style="bold bright_white")
+        console.print(msg)
+        console.print("  [dim #64748b]Have a wonderful day with your music.[/dim #64748b]\n")
+

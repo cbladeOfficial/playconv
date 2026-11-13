@@ -5,6 +5,7 @@ Zero emojis, high-color Rich terminal styling, and solid box badges.
 """
 
 import os
+import signal
 import sys
 from typing import Optional
 
@@ -23,13 +24,66 @@ from .platforms import resolve_source_to_playlist
 from .ui import (
     console,
     display_collection_header,
+    display_exit_message,
     display_tracks_table,
     render_step_header,
     show_banner,
 )
 
+_exit_handled = False
 
-@click.group(invoke_without_command=True)
+
+def handle_sigint(signum=None, frame=None):
+    """Graceful signal handler for SIGINT (Ctrl+C)."""
+    global _exit_handled
+    if _exit_handled:
+        sys.exit(0)
+    _exit_handled = True
+    display_exit_message(interrupted=True)
+    sys.exit(0)
+
+
+try:
+    signal.signal(signal.SIGINT, handle_sigint)
+except (ValueError, AttributeError):
+    pass
+
+
+def _custom_excepthook(exc_type, exc_value, exc_traceback):
+    """Fallback exception hook to catch unhandled KeyboardInterrupts and click.Abort."""
+    global _exit_handled
+    if issubclass(exc_type, (KeyboardInterrupt, click.Abort)):
+        if not _exit_handled:
+            _exit_handled = True
+            display_exit_message(interrupted=True)
+        sys.exit(0)
+    sys.__excepthook__(exc_type, exc_value, exc_traceback)
+
+
+sys.excepthook = _custom_excepthook
+
+
+class GracefulGroup(click.Group):
+    """Click command group that gracefully traps KeyboardInterrupt, click.Abort, and SIGINT."""
+
+    def main(self, *args, **kwargs):
+        try:
+            rv = super().main(*args, standalone_mode=False, **kwargs)
+            if isinstance(rv, int):
+                sys.exit(rv)
+            return rv
+        except (KeyboardInterrupt, click.Abort):
+            global _exit_handled
+            if not _exit_handled:
+                _exit_handled = True
+                display_exit_message(interrupted=True)
+            sys.exit(0)
+        except click.ClickException as e:
+            e.show()
+            sys.exit(e.exit_code)
+
+
+@click.group(cls=GracefulGroup, invoke_without_command=True)
 @click.pass_context
 @click.version_option("1.0.0", prog_name="PlayConv")
 def main(ctx: click.Context):
@@ -200,7 +254,7 @@ def run_interactive_wizard():
         run_auth_wizard(plat)
 
     elif choice == "6":
-        console.print("  [dim]Exiting PlayConv.[/dim]\n")
+        display_exit_message(interrupted=False)
         sys.exit(0)
 
 
