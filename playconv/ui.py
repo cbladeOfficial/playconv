@@ -56,9 +56,8 @@ def render_gradient_banner() -> Panel:
 
     ascii_text = Text()
     for line in banner_lines:
-        ascii_text.append(line[:32], style="bold #00f0ff")
-        ascii_text.append(line[32:38], style="bold bright_white")
-        ascii_text.append(line[38:], style="bold #d946ef")
+        ascii_text.append(line[:33], style="bold #00f0ff")
+        ascii_text.append(line[33:], style="bold #d946ef")
         ascii_text.append("\n")
 
     sub_text = Text()
