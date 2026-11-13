@@ -10,7 +10,7 @@
 ```
 
 > **Universal Music Playlist Converter, CSV Archiver & Exact Track Matcher CLI.**  
-> Effortlessly convert playlists, albums, and tracks between **Spotify**, **YouTube Music**, **JioSaavn**, **Deezer**, and **Apple Music** with intelligent exact-matching heuristics and rich CSV exports.
+> Effortlessly convert playlists, albums, and tracks between **Spotify**, **YouTube Music**, **JioSaavn**, **Amazon Music**, **Deezer**, and **Apple Music** with intelligent exact-matching heuristics and rich CSV exports.
 
 ---
 
@@ -19,8 +19,14 @@
 - **Multi-Platform Cross-Conversion**:
   - **Spotify** <-> **YouTube Music**
   - **Spotify** <-> **JioSaavn**
+  - **Spotify** <-> **Amazon Music**
   - **JioSaavn** <-> **YouTube Music**
-  - **Apple Music / Deezer** -> **YouTube Music / JioSaavn / Spotify / CSV**
+  - **Amazon Music** <-> **YouTube Music / Spotify / JioSaavn**
+  - **Apple Music / Deezer** -> **YouTube Music / JioSaavn / Spotify / Amazon Music / CSV**
+- **Smart Exact Album Conversion**:
+  - When an **album URL** is provided as input, PlayConv queries the target platform for the official matching album release (comparing title normalization, artist, and track counts).
+  - If the exact album release is found elsewhere, PlayConv considers **that exact album as the direct conversion**, returning the official album link and perfectly mapping all sequential tracks.
+  - Gracefully falls back to individual track-by-track heuristic matching if no exact album release is found on the destination platform.
 - **Full Entity Support (Playlists, Albums & Tracks)**:
   - Supports Playlist URLs, Album URLs, Single Track URLs, and CSV spreadsheets.
 - **Intelligent Exact Match Engine**:
@@ -159,8 +165,14 @@ playconv config
 | **YouTube Music** | Zero Auth Required | Session Headers / Cookies / OAuth | `playconv auth ytmusic` |
 | **JioSaavn** | Zero Auth Required | Session Cookie | `playconv auth jiosaavn` |
 | **Spotify** | Zero Auth (Embed fallback) | Free Spotify Developer App OAuth | `playconv auth spotify` |
+| **Amazon Music** | Zero Auth (Official GraphQL API) | Session Cookie | `playconv auth amazonmusic` |
 | **Deezer** | Zero Auth (Public API) | Not Supported | Built-in |
 | **Apple Music** | Zero Auth (Schema scraper) | Not Supported | Built-in |
+
+### Setting Up Amazon Music Writing
+1. Log in to [music.amazon.com](https://music.amazon.com) in your browser.
+2. Open DevTools (`F12`) -> **Network** tab, inspect any request to `music.amazon.com`, and copy the `Cookie` header string.
+3. Run `playconv auth amazonmusic` and paste the cookie string.
 
 ### Setting Up YouTube Music Writing
 1. Open [music.youtube.com](https://music.youtube.com) in your browser while logged in.

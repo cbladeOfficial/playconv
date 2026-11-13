@@ -9,6 +9,7 @@ from typing import Dict, List, Optional, Tuple
 
 from ..csv_handler import CSVHandler
 from ..models import ContentType, PlatformType, PlaylistMetadata, Track
+from .amazonmusic import AmazonMusicPlatform
 from .applemusic import AppleMusicPlatform
 from .base import BasePlatform
 from .deezer import DeezerPlatform
@@ -24,6 +25,7 @@ PLATFORM_REGISTRY: Dict[PlatformType, BasePlatform] = {
     PlatformType.JIOSAAVN: JioSaavnPlatform(),
     PlatformType.DEEZER: DeezerPlatform(),
     PlatformType.APPLE_MUSIC: AppleMusicPlatform(),
+    PlatformType.AMAZON_MUSIC: AmazonMusicPlatform(),
 }
 
 
@@ -75,7 +77,7 @@ def resolve_source_to_playlist(raw_input: str) -> PlaylistMetadata:
     if ptype == PlatformType.UNKNOWN:
         raise ValueError(
             f"Could not recognize source music platform or file format for:\n{raw_input}\n"
-            "Supported platforms: Spotify, YouTube Music, JioSaavn, Deezer, Apple Music, or CSV files."
+            "Supported platforms: Spotify, YouTube Music, JioSaavn, Amazon Music, Deezer, Apple Music, or CSV files."
         )
 
     adapter = get_platform(ptype)

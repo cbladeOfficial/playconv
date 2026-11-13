@@ -49,6 +49,11 @@ class Config:
                 "cookie": "",
                 "cookies_file": "",
             },
+            "amazonmusic": {
+                "cookie": "",
+                "cookies_file": "",
+                "access_token": "",
+            },
             "matching": {
                 "confidence_threshold": 0.75,
                 "exact_threshold": 0.85,
@@ -137,6 +142,25 @@ class Config:
             except Exception:
                 pass
         return ""
+
+    # Amazon Music Helpers
+    @property
+    def amazon_music_cookie(self) -> str:
+        cookie = self.get("amazonmusic", "cookie")
+        if cookie:
+            return cookie
+        cookie_file = self.get("amazonmusic", "cookies_file")
+        if cookie_file and os.path.exists(cookie_file):
+            try:
+                with open(cookie_file, "r", encoding="utf-8") as f:
+                    return f.read().strip()
+            except Exception:
+                pass
+        return ""
+
+    @property
+    def amazon_music_access_token(self) -> str:
+        return self.get("amazonmusic", "access_token") or os.environ.get("AMAZON_MUSIC_ACCESS_TOKEN", "")
 
     # Matching settings
     @property

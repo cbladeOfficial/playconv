@@ -58,7 +58,7 @@ def run_interactive_wizard():
     console.print("    [bold white on #475569]  2  [/]  [bold bright_white]Export to CSV[/]          [dim]Export full metadata from any music URL to CSV file[/]")
     console.print("    [bold white on #475569]  3  [/]  [bold bright_white]Import CSV to Service[/]  [dim]Create a playlist on a platform from an existing CSV file[/]")
     console.print("    [bold white on #475569]  4  [/]  [bold bright_white]Inspect URL Info[/]       [dim]Preview collection tracks and metadata without converting[/]")
-    console.print("    [bold white on #475569]  5  [/]  [bold bright_white]Platform Accounts[/]      [dim]Configure YouTube Music, Spotify, or JioSaavn credentials[/]")
+    console.print("    [bold white on #475569]  5  [/]  [bold bright_white]Platform Accounts[/]      [dim]Configure YouTube Music, Spotify, JioSaavn, or Amazon Music credentials[/]")
     console.print("    [bold white on #475569]  6  [/]  [bold bright_white]Exit[/]")
     console.print()
 
@@ -73,7 +73,7 @@ def run_interactive_wizard():
         render_step_header(
             step_num="1",
             title="Source Music Link or CSV Path",
-            subtitle="Paste any Spotify, YouTube Music, JioSaavn, Deezer, or Apple Music URL (or local CSV)",
+            subtitle="Paste any Spotify, YouTube Music, JioSaavn, Amazon Music, Deezer, or Apple Music URL (or local CSV)",
         )
         source = ""
         while not source.strip():
@@ -90,15 +90,16 @@ def run_interactive_wizard():
         console.print("    [bold white on #b91c1c]  1  [/]  [bold bright_white]YouTube Music[/]   [dim]music.youtube.com (ytmusicapi)[/]   [bold white on #16a34a]  POPULAR  [/]")
         console.print("    [bold white on #15803d]  2  [/]  [bold bright_white]Spotify[/]         [dim]open.spotify.com (Spotipy API)[/]")
         console.print("    [bold white on #0284c7]  3  [/]  [bold bright_white]JioSaavn[/]        [dim]jiosaavn.com (session API)[/]")
-        console.print("    [bold white on #7c3aed]  4  [/]  [bold bright_white]CSV File[/]        [dim]Export structured metadata spreadsheet only[/]")
+        console.print("    [bold white on #ea580c]  4  [/]  [bold bright_white]Amazon Music[/]    [dim]music.amazon.com (official client API)[/]")
+        console.print("    [bold white on #7c3aed]  5  [/]  [bold bright_white]CSV File[/]        [dim]Export structured metadata spreadsheet only[/]")
         console.print()
 
         dest_choice = Prompt.ask(
-            "  [bold #00f0ff]>[/] [bold white]Select Destination [1-4][/bold white]",
-            choices=["1", "2", "3", "4", "ytmusic", "spotify", "jiosaavn", "csv"],
+            "  [bold #00f0ff]>[/] [bold white]Select Destination [1-5][/bold white]",
+            choices=["1", "2", "3", "4", "5", "ytmusic", "spotify", "jiosaavn", "amazonmusic", "amazon", "csv"],
             default="1",
         )
-        dest_map = {"1": "ytmusic", "2": "spotify", "3": "jiosaavn", "4": "csv"}
+        dest_map = {"1": "ytmusic", "2": "spotify", "3": "jiosaavn", "4": "amazonmusic", "5": "csv"}
         dest_str = dest_map.get(dest_choice, dest_choice)
         dest_platform = PlatformType.from_string(dest_str)
 
@@ -406,6 +407,20 @@ def run_auth_wizard(platform_str: str):
             config.set("jiosaavn", "cookie", cookie.strip())
             console.print("    [bold green]Saved JioSaavn session cookie.[/bold green]\n")
 
+    # Amazon Music
+    if plat in ("all", "amazonmusic", "amazon", "amz"):
+        render_step_header(
+            step_num="AUTH",
+            title="Amazon Music Authentication",
+            subtitle="Paste your session cookie string copied from DevTools (music.amazon.com)",
+            badge="AMAZON",
+            badge_color="#ea580c",
+        )
+        cookie = Prompt.ask("  [bold #00f0ff]>[/] [bold white]Amazon Music Cookie string[/bold white] [dim](press Enter to skip)[/dim]", default=config.amazon_music_cookie)
+        if cookie:
+            config.set("amazonmusic", "cookie", cookie.strip())
+            console.print("    [bold green]Saved Amazon Music session cookie.[/bold green]\n")
+
 
 @main.command("config")
 @click.option("--show", is_flag=True, default=True, help="Show current configuration")
@@ -419,4 +434,10 @@ def config_cmd(show: bool):
         data["spotify"]["client_secret"] = "********"
     if "jiosaavn" in data and "cookie" in data["jiosaavn"] and data["jiosaavn"]["cookie"]:
         data["jiosaavn"]["cookie"] = data["jiosaavn"]["cookie"][:15] + "..."
+    if "amazonmusic" in data and "cookie" in data["amazonmusic"] and data["amazonmusic"]["cookie"]:
+        data["amazonmusic"]["cookie"] = data["amazonmusic"]["cookie"][:15] + "..."
     console.print_json(json.dumps(data, indent=2))
+
+
+if __name__ == "__main__":
+    main()

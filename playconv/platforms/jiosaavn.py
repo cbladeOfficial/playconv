@@ -279,6 +279,30 @@ class JioSaavnPlatform(BasePlatform):
                 candidates.append(self._parse_track_item(r))
         return candidates
 
+    def search_album(self, title: str, artist: str, limit: int = 5) -> List[PlaylistMetadata]:
+        from ..matcher import clean_title
+        cleaned = clean_title(title)
+        query = f"{cleaned} {artist}".strip()
+
+        params = {
+            "__call": "search.getAlbumResults",
+            "q": query,
+            "n": limit,
+        }
+        data = self._call(params)
+        results = data.get("results") or []
+        albums: List[PlaylistMetadata] = []
+        for r in results:
+            if isinstance(r, dict):
+                album_id = r.get("id") or r.get("perma_url")
+                if album_id:
+                    try:
+                        alb = self.fetch_album(album_id)
+                        albums.append(alb)
+                    except Exception as e:
+                        logger.debug(f"Failed to fetch JioSaavn album {album_id}: {e}")
+        return albums
+
     def is_authenticated_for_writing(self) -> bool:
         return bool(config.jiosaavn_cookie)
 

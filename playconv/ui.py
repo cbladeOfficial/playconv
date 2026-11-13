@@ -72,6 +72,7 @@ def render_gradient_banner() -> Panel:
             ("  SPOTIFY  ", "bold white on #15803d"),
             ("  YT MUSIC  ", "bold white on #b91c1c"),
             ("  JIOSAAVN  ", "bold white on #0284c7"),
+            ("  AMAZON  ", "bold white on #ea580c"),
             ("  CSV / M3U  ", "bold white on #7c3aed"),
             ("  EXACT MATCH  ", "bold white on #d97706"),
             ("  ISRC ENGINE  ", "bold white on #059669"),
@@ -82,6 +83,7 @@ def render_gradient_banner() -> Panel:
             (" SPOTIFY ", "bold white on #15803d"),
             (" YT MUSIC ", "bold white on #b91c1c"),
             (" JIOSAAVN ", "bold white on #0284c7"),
+            (" AMAZON ", "bold white on #ea580c"),
             (" CSV / M3U ", "bold white on #7c3aed"),
             (" EXACT ", "bold white on #d97706"),
         ]
@@ -331,7 +333,18 @@ def show_final_summary(summary: ConversionSummary, elapsed_seconds: float = 0.0)
         make_badge("COMPLETE", "#16a34a", 16),
         f"[bold bright_green]{summary.matched_count}[/] / [bold bright_white]{summary.total_tracks}[/] tracks matched ([bold #4ade80]{summary.match_rate:.1f}%[/])",
     )
-    if summary.exact_match_count > 0:
+    if summary.is_exact_album_conversion:
+        summary_table.add_row(
+            make_badge("ALBUM CONVERT", "#059669", 16),
+            f"[bold #34d399]Direct Exact Album Match:[/] [bold bright_white]{summary.matched_album_title or summary.source_name}[/] "
+            + (f"by [dim]{summary.matched_album_artist}[/dim]" if summary.matched_album_artist else ""),
+        )
+        if summary.matched_album_url:
+            summary_table.add_row(
+                make_badge("ALBUM URL", "#0284c7", 16),
+                f"[bold underline #38bdf8]{summary.matched_album_url}[/bold underline #38bdf8]",
+            )
+    if summary.exact_match_count > 0 and not summary.is_exact_album_conversion:
         summary_table.add_row(
             make_badge("EXACT MATCHES", "#059669", 16),
             f"[bold #34d399]{summary.exact_match_count}[/] tracks with 100% exact metadata & duration alignment",
@@ -341,7 +354,7 @@ def show_final_summary(summary: ConversionSummary, elapsed_seconds: float = 0.0)
             make_badge("UNMATCHED", "#dc2626", 16),
             f"[bold red]{summary.unmatched_count}[/] tracks below confidence threshold",
         )
-    if summary.created_playlist_url:
+    if summary.created_playlist_url and not summary.is_exact_album_conversion:
         summary_table.add_row(
             make_badge("PLAYLIST URL", "#0284c7", 16),
             f"[bold underline #38bdf8]{summary.created_playlist_url}[/bold underline #38bdf8]",

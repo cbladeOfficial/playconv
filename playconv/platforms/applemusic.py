@@ -182,6 +182,59 @@ class AppleMusicPlatform(BasePlatform):
         )
 
     def search_track(self, track: Track, limit: int = 5) -> List[Track]:
+        from ..matcher import clean_title
+        cleaned = clean_title(track.title)
+        primary = track.primary_artist or (track.artists[0] if track.artists else "")
+        query = f"{cleaned} {primary}".strip()
+        try:
+            url = f"https://itunes.apple.com/search?term={urllib.parse.quote(query)}&entity=song&limit={limit}"
+            resp = self.session.get(url, timeout=10)
+            if resp.status_code == 200:
+                data = resp.json()
+                candidates: List[Track] = []
+                for item in data.get("results", []):
+                    t_title = item.get("trackName") or ""
+                    artist = item.get("artistName") or ""
+                    album = item.get("collectionName") or ""
+                    dur_ms = item.get("trackTimeMillis") or 0
+                    track_url = item.get("trackViewUrl") or ""
+                    candidates.append(
+                        Track(
+                            title=t_title,
+                            artists=[artist] if artist else [],
+                            primary_artist=artist,
+                            album=album,
+                            duration_sec=int(dur_ms // 1000),
+                            source_platform=PlatformType.APPLE_MUSIC,
+                            source_url=track_url,
+                        )
+                    )
+                return candidates
+        except Exception as e:
+            logger.debug(f"iTunes track search error: {e}")
+        return []
+
+    def search_album(self, title: str, artist: str, limit: int = 5) -> List[PlaylistMetadata]:
+        from ..matcher import clean_title
+        cleaned = clean_title(title)
+        query = f"{cleaned} {artist}".strip()
+        try:
+            url = f"https://itunes.apple.com/search?term={urllib.parse.quote(query)}&entity=album&limit={limit}"
+            resp = self.session.get(url, timeout=10)
+            if resp.status_code == 200:
+                data = resp.json()
+                albums: List[PlaylistMetadata] = []
+                for item in data.get("results", []):
+                    view_url = item.get("collectionViewUrl")
+                    if view_url:
+                        try:
+                            alb = self.fetch_album(view_url)
+                            albums.append(alb)
+                        except Exception as e:
+                            logger.debug(f"Failed to fetch Apple Music album {view_url}: {e}")
+                return albums
+        except Exception as e:
+            logger.debug(f"iTunes album search error: {e}")
         return []
 
     def is_authenticated_for_writing(self) -> bool:

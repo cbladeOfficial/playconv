@@ -14,6 +14,7 @@ class PlatformType(str, Enum):
     JIOSAAVN = "jiosaavn"
     APPLE_MUSIC = "applemusic"
     DEEZER = "deezer"
+    AMAZON_MUSIC = "amazonmusic"
     CSV = "csv"
     M3U = "m3u"
     UNKNOWN = "unknown"
@@ -31,6 +32,8 @@ class PlatformType(str, Enum):
             return cls.APPLE_MUSIC
         elif clean in ("deezer", "dz"):
             return cls.DEEZER
+        elif clean in ("amazonmusic", "amazon", "amz", "amzn", "am"):
+            return cls.AMAZON_MUSIC
         elif clean in ("csv", "excel"):
             return cls.CSV
         elif clean in ("m3u", "m3u8"):
@@ -143,6 +146,11 @@ class ConversionSummary:
     created_playlist_id: Optional[str] = None
     created_playlist_url: Optional[str] = None
     exported_csv_path: Optional[str] = None
+    is_exact_album_conversion: bool = False
+    matched_album_title: Optional[str] = None
+    matched_album_artist: Optional[str] = None
+    matched_album_url: Optional[str] = None
+    matched_album_id: Optional[str] = None
     results: List[MatchResult] = field(default_factory=list)
 
     @property

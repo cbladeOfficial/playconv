@@ -167,6 +167,26 @@ class DeezerPlatform(BasePlatform):
         results = data.get("data", [])
         return [self._parse_track_json(t, i) for i, t in enumerate(results, start=1)]
 
+    def search_album(self, title: str, artist: str, limit: int = 5) -> List[PlaylistMetadata]:
+        from ..matcher import clean_title
+        cleaned = clean_title(title)
+        query = f"{cleaned} {artist}".strip()
+        resp = self.session.get(f"{DEEZER_API_BASE}/search/album", params={"q": query, "limit": limit}, timeout=15)
+        if resp.status_code != 200:
+            return []
+        data = resp.json()
+        results = data.get("data", [])
+        albums: List[PlaylistMetadata] = []
+        for r in results[:limit]:
+            aid = r.get("id")
+            if aid:
+                try:
+                    alb = self.fetch_album(str(aid))
+                    albums.append(alb)
+                except Exception as e:
+                    logger.debug(f"Failed to fetch Deezer album {aid}: {e}")
+        return albums
+
     def is_authenticated_for_writing(self) -> bool:
         return False
 

@@ -42,6 +42,13 @@ class BasePlatform(ABC):
         """Searches for candidate tracks on this platform matching the query track."""
         pass
 
+    def search_album(self, title: str, artist: str, limit: int = 5) -> List[PlaylistMetadata]:
+        """
+        Searches for candidate albums on this platform matching the given title and artist.
+        Returns a list of candidate albums with their track lists populated.
+        """
+        return []
+
     @abstractmethod
     def create_playlist(
         self,

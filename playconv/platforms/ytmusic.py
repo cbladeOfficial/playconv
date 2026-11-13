@@ -327,6 +327,28 @@ class YTMusicPlatform(BasePlatform):
 
         return candidates
 
+    def search_album(self, title: str, artist: str, limit: int = 5) -> List[PlaylistMetadata]:
+        from ..matcher import clean_title
+        cleaned = clean_title(title)
+        query = f"{cleaned} {artist}".strip()
+        client = self._auth_client or self._unauth_client
+
+        albums: List[PlaylistMetadata] = []
+        try:
+            results = client.search(query, filter="albums")
+            for r in results[:limit]:
+                browse_id = r.get("browseId")
+                if browse_id:
+                    try:
+                        alb = self.fetch_album(browse_id)
+                        albums.append(alb)
+                    except Exception as e:
+                        logger.debug(f"Failed to fetch YTMusic album {browse_id}: {e}")
+        except Exception as e:
+            logger.debug(f"YTMusic album search failed: {e}")
+
+        return albums
+
     def is_authenticated_for_writing(self) -> bool:
         self._init_auth_client()
         return self._auth_client is not None

@@ -67,6 +67,28 @@ def test_deezer_url_identification():
     assert c == ContentType.PLAYLIST
 
 
+def test_amazonmusic_url_identification():
+    p, c, t = identify_source("https://music.amazon.com/albums/B07SYHQPPD")
+    assert p == PlatformType.AMAZON_MUSIC
+    assert c == ContentType.ALBUM
+    assert t == "B07SYHQPPD"
+
+    p, c, t = identify_source("https://music.amazon.in/tracks/B07SYZKYSW")
+    assert p == PlatformType.AMAZON_MUSIC
+    assert c == ContentType.TRACK
+    assert t == "B07SYZKYSW"
+
+    p, c, t = identify_source("https://music.amazon.co.uk/playlists/B07S9N7897")
+    assert p == PlatformType.AMAZON_MUSIC
+    assert c == ContentType.PLAYLIST
+    assert t == "B07S9N7897"
+
+    p, c, t = identify_source("B07SYHQPPD")
+    assert p == PlatformType.AMAZON_MUSIC
+    assert c == ContentType.ALBUM
+    assert t == "B07SYHQPPD"
+
+
 def test_csv_identification():
     p, c, t = identify_source("my_playlist.csv")
     assert p == PlatformType.CSV

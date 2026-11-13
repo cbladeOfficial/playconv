@@ -434,6 +434,36 @@ class SpotifyPlatform(BasePlatform):
 
         return candidates
 
+    def search_album(self, title: str, artist: str, limit: int = 5) -> List[PlaylistMetadata]:
+        client = self._sp_oauth_client or self._sp_client
+        if not client:
+            return []
+
+        from ..matcher import clean_title
+        cleaned = clean_title(title)
+        query = f"album:{cleaned} artist:{artist}".strip()
+        albums: List[PlaylistMetadata] = []
+
+        try:
+            res = client.search(q=query, type="album", limit=limit)
+            items = (res.get("albums") or {}).get("items", [])
+            if not items:
+                res = client.search(q=f"{cleaned} {artist}".strip(), type="album", limit=limit)
+                items = (res.get("albums") or {}).get("items", [])
+
+            for item in items[:limit]:
+                album_id = item.get("id")
+                if album_id:
+                    try:
+                        alb = self.fetch_album(album_id)
+                        albums.append(alb)
+                    except Exception as e:
+                        logger.debug(f"Failed to fetch Spotify album {album_id}: {e}")
+        except Exception as e:
+            logger.debug(f"Spotify album search failed: {e}")
+
+        return albums
+
     def is_authenticated_for_writing(self) -> bool:
         self._init_clients()
         if not self._sp_oauth_client:

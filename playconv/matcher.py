@@ -262,3 +262,8 @@ class TrackMatcher:
             duration_diff_sec=best_diff,
             reason=f"below_threshold ({best_score:.2f} < {required_threshold:.2f})" if best_cand else "no_match",
         )
+
+    def calculate_confidence(self, source: Track, candidate: Track) -> float:
+        """Calculates candidate matching confidence score against source track."""
+        res = self.match(source, [candidate])
+        return res.confidence_score
