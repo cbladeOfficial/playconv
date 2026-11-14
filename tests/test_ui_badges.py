@@ -54,3 +54,28 @@ def test_show_final_summary_runs():
         exported_csv_path="test_export.csv",
     )
     show_final_summary(summary_err, elapsed_seconds=12.0)
+
+
+def test_summary_badges_uniform_width_and_symmetry():
+    # Verify all badge labels in show_final_summary have uniform width of 18 and strictly equal padding
+    labels = [
+        "SOURCE",
+        "TARGET",
+        "TRACKS MATCHED",
+        "ALBUM RESULT",
+        "ALBUM LINK",
+        "EXACT TRACKS",
+        "NO MATCHES",
+        "PLAYLIST URL",
+        "PLAYLIST",
+        "CSV RECORD",
+        "ELAPSED TIME",
+    ]
+    target_width = 18
+    for label in labels:
+        assert len(label) % 2 == 0, f"Label '{label}' has odd length {len(label)}, which prevents symmetric padding"
+        total_pad = max(0, target_width - len(label))
+        left_pad = total_pad // 2
+        right_pad = total_pad - left_pad
+        assert left_pad == right_pad, f"Label '{label}' is not symmetrically padded"
+        assert len(label) + total_pad == target_width, f"Label '{label}' total width is not {target_width}"
