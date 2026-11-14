@@ -32,12 +32,13 @@ console = Console(legacy_windows=False)
 
 
 def make_box_badge(text: str, bg_color: str, fg_color: str = "white", width: Optional[int] = None) -> Text:
-    """Builds a complete solid colored box with centered text (no brackets)."""
+    """Builds a complete solid colored box with strictly symmetric centered text (no brackets)."""
     if width and width > len(text):
         total_pad = width - len(text)
-        left_pad = total_pad // 2
-        right_pad = total_pad - left_pad
-        label = f"{' ' * left_pad}{text}{' ' * right_pad}"
+        if total_pad % 2 != 0:
+            total_pad += 1
+        pad = total_pad // 2
+        label = f"{' ' * pad}{text}{' ' * pad}"
     else:
         label = f"  {text}  "
     return Text(label, style=f"bold {fg_color} on {bg_color}")
@@ -258,7 +259,7 @@ def show_match_results_table(results: List[MatchResult], max_rows: int = 25) -> 
         expand=True,
     )
     table.add_column("#", style="dim cyan", width=3, justify="right", no_wrap=True)
-    table.add_column("Match Status", justify="center", width=12, no_wrap=True)
+    table.add_column(Align.center("Match Status"), width=16, no_wrap=True)
     table.add_column("Source Track", style="bright_white", ratio=3, no_wrap=True, overflow="ellipsis")
     table.add_column("Matched Target Track", style="bold bright_white", ratio=3, no_wrap=True, overflow="ellipsis")
     table.add_column("Score", justify="right", width=8, no_wrap=True)
@@ -275,10 +276,10 @@ def show_match_results_table(results: List[MatchResult], max_rows: int = 25) -> 
             diff_str = f"+/-{res.duration_diff_sec}s" if res.duration_diff_sec is not None else "--"
 
             if res.is_exact:
-                badge = Text("  EXACT  ", style="bold white on #16a34a")
+                badge = Align.center(Text.from_markup("[bold white on #16a34a]  EXACT  [/]"))
                 score_str = f"[bold #4ade80]{score_pct}[/]"
             else:
-                badge = Text("  CLOSE  ", style="bold white on #ca8a04")
+                badge = Align.center(Text.from_markup("[bold white on #ca8a04]  CLOSE  [/]"))
                 score_str = f"[bold #facc15]{score_pct}[/]"
 
             table.add_row(
@@ -290,7 +291,7 @@ def show_match_results_table(results: List[MatchResult], max_rows: int = 25) -> 
                 f"[dim]{diff_str}[/dim]",
             )
         else:
-            badge = Text("  MISS  ", style="bold white on #dc2626")
+            badge = Align.center(Text.from_markup("[bold white on #dc2626]   MISS   [/]"))
             table.add_row(
                 f"{idx:02d}",
                 badge,
@@ -309,11 +310,12 @@ def show_match_results_table(results: List[MatchResult], max_rows: int = 25) -> 
 
 def show_final_summary(summary: ConversionSummary, elapsed_seconds: float = 0.0) -> None:
     """Renders a sleek, colorful dashboard summary card with consistent-width solid boxes and generous spacing."""
-    def make_badge(text: str, bg: str, width: int = 16) -> str:
-        total_pad = max(0, width - len(text))
-        left_pad = total_pad // 2
-        right_pad = total_pad - left_pad
-        label = f"{' ' * left_pad}{text}{' ' * right_pad}"
+    def make_badge(text: str, bg: str, min_width: int = 18) -> str:
+        total_pad = max(4, min_width - len(text))
+        if total_pad % 2 != 0:
+            total_pad += 1
+        pad = total_pad // 2
+        label = f"{' ' * pad}{text}{' ' * pad}"
         return f"[bold white on {bg}]{label}[/]"
 
     summary_table = Table.grid(padding=(0, 4))
@@ -321,52 +323,52 @@ def show_final_summary(summary: ConversionSummary, elapsed_seconds: float = 0.0)
     summary_table.add_column(style="bright_white")
 
     summary_table.add_row(
-        make_badge("SOURCE", "#2563eb", 16),
+        make_badge("SOURCE", "#2563eb", 18),
         f"[bold bright_white]{summary.source_name}[/bold bright_white]",
     )
     summary_table.add_row(
-        make_badge("TARGET PLATFORM", "#7c3aed", 16),
+        make_badge("TARGET", "#7c3aed", 18),
         f"[bold #c084fc]{summary.destination_platform.value.upper()}[/bold #c084fc]",
     )
     summary_table.add_row(
-        make_badge("COMPLETE", "#16a34a", 16),
+        make_badge("COMPLETE", "#16a34a", 18),
         f"[bold bright_green]{summary.matched_count}[/] / [bold bright_white]{summary.total_tracks}[/] tracks matched ([bold #4ade80]{summary.match_rate:.1f}%[/])",
     )
     if summary.is_exact_album_conversion:
         summary_table.add_row(
-            make_badge("ALBUM CONVERT", "#059669", 16),
+            make_badge("ALBUM CONVERT", "#059669", 18),
             f"[bold #34d399]Direct Exact Album Match:[/] [bold bright_white]{summary.matched_album_title or summary.source_name}[/] "
             + (f"by [dim]{summary.matched_album_artist}[/dim]" if summary.matched_album_artist else ""),
         )
         if summary.matched_album_url:
             summary_table.add_row(
-                make_badge("ALBUM URL", "#0284c7", 16),
+                make_badge("ALBUM URL", "#0284c7", 18),
                 f"[bold underline #38bdf8]{summary.matched_album_url}[/bold underline #38bdf8]",
             )
     if summary.exact_match_count > 0 and not summary.is_exact_album_conversion:
         summary_table.add_row(
-            make_badge("EXACT MATCHES", "#059669", 16),
+            make_badge("EXACT MATCHES", "#059669", 18),
             f"[bold #34d399]{summary.exact_match_count}[/] tracks with 100% exact metadata & duration alignment",
         )
     if summary.unmatched_count > 0:
         summary_table.add_row(
-            make_badge("UNMATCHED", "#dc2626", 16),
+            make_badge("UNMATCHED", "#dc2626", 18),
             f"[bold red]{summary.unmatched_count}[/] tracks below confidence threshold",
         )
     if summary.created_playlist_url and not summary.is_exact_album_conversion:
         summary_table.add_row(
-            make_badge("PLAYLIST URL", "#0284c7", 16),
+            make_badge("PLAYLIST URL", "#0284c7", 18),
             f"[bold underline #38bdf8]{summary.created_playlist_url}[/bold underline #38bdf8]",
         )
     if summary.exported_csv_path:
         summary_table.add_row(
-            make_badge("CSV RECORD", "#9333ea", 16),
+            make_badge("CSV RECORD", "#9333ea", 18),
             f"[bold bright_magenta]{os.path.abspath(summary.exported_csv_path)}[/bold bright_magenta]",
         )
     if elapsed_seconds > 0:
         mins, secs = divmod(int(elapsed_seconds), 60)
         summary_table.add_row(
-            make_badge("ELAPSED TIME", "#d97706", 16),
+            make_badge("ELAPSED TIME", "#d97706", 18),
             f"[bold #facc15]{mins}m {secs:02d}s[/bold #facc15]",
         )
 
