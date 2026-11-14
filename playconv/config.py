@@ -15,6 +15,54 @@ DEFAULT_CONFIG_DIR = Path.home() / ".playconv"
 CONFIG_FILE = DEFAULT_CONFIG_DIR / "config.json"
 
 
+def parse_cookie_input(raw: str) -> Dict[str, str]:
+    """
+    Parses cookies from:
+    1. Netscape/Mozilla cookies.txt format (tab-separated)
+    2. Raw HTTP 'Cookie: a=1; b=2' or 'a=1; b=2' string
+    3. File path containing either format
+    """
+    if not raw:
+        return {}
+    raw = raw.strip()
+    if os.path.isfile(raw):
+        try:
+            with open(raw, "r", encoding="utf-8", errors="ignore") as f:
+                raw = f.read().strip()
+        except Exception:
+            return {}
+
+    cookies: Dict[str, str] = {}
+    if "\t" in raw or raw.startswith("#"):
+        for line in raw.splitlines():
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            parts = line.split("\t")
+            if len(parts) >= 7:
+                name = parts[5].strip()
+                val = parts[6].strip()
+                if name:
+                    cookies[name] = val
+    else:
+        if raw.lower().startswith("cookie:"):
+            raw = raw[7:].strip()
+        for item in raw.split(";"):
+            item = item.strip()
+            if "=" in item:
+                k, v = item.split("=", 1)
+                k_clean = k.strip()
+                v_clean = v.strip()
+                if k_clean:
+                    cookies[k_clean] = v_clean
+    return cookies
+
+
+def cookies_to_header_str(cookies: Dict[str, str]) -> str:
+    """Converts cookie dictionary to a clean standard HTTP Cookie header string."""
+    return "; ".join(f"{k}={v}" for k, v in cookies.items())
+
+
 class Config:
     """Manages persistent application settings and credentials."""
 
@@ -110,10 +158,13 @@ class Config:
         auth_file = self.get("ytmusic", "auth_file")
         if auth_file and os.path.exists(auth_file):
             return auth_file
-        # Check if local headers_auth.json or browser.json exists in cwd
-        for candidate in ["browser.json", "oauth.json", "headers_auth.json"]:
-            if os.path.exists(candidate):
-                return candidate
+        # Check if local headers_auth.json or browser.json exists in cwd or config_dir
+        search_dirs = [Path("."), self.config_dir]
+        for sdir in search_dirs:
+            for candidate in ["browser.json", "oauth.json", "headers_auth.json", "ytmusic_auth.json"]:
+                p = sdir / candidate
+                if p.exists():
+                    return str(p.resolve())
         return auth_file
 
     @property
@@ -121,42 +172,43 @@ class Config:
         cookie_path = self.get("ytmusic", "cookies_file")
         if cookie_path and os.path.exists(cookie_path):
             return cookie_path
-        # Also check default local names in current working directory
-        for cand in ["cookies_yt.txt", "cookies.txt"]:
-            if os.path.exists(cand):
-                return cand
+        # Also check default local names in current working directory and config_dir
+        for sdir in [Path("."), self.config_dir]:
+            for cand in ["cookies_yt.txt", "cookies.txt"]:
+                p = sdir / cand
+                if p.exists():
+                    return str(p.resolve())
         return None
 
     # JioSaavn Helpers
     @property
     def jiosaavn_cookie(self) -> str:
-        cookie = self.get("jiosaavn", "cookie")
-        if cookie:
-            return cookie
-        # If a cookies_file is given, load it
+        raw = self.get("jiosaavn", "cookie")
         cookie_file = self.get("jiosaavn", "cookies_file")
-        if cookie_file and os.path.exists(cookie_file):
-            try:
-                with open(cookie_file, "r", encoding="utf-8") as f:
-                    return f.read().strip()
-            except Exception:
-                pass
-        return ""
+        source = raw or cookie_file or ""
+        cookies = parse_cookie_input(source)
+        return cookies_to_header_str(cookies)
+
+    def jiosaavn_cookie_dict(self) -> Dict[str, str]:
+        raw = self.get("jiosaavn", "cookie")
+        cookie_file = self.get("jiosaavn", "cookies_file")
+        source = raw or cookie_file or ""
+        return parse_cookie_input(source)
 
     # Amazon Music Helpers
     @property
     def amazon_music_cookie(self) -> str:
-        cookie = self.get("amazonmusic", "cookie")
-        if cookie:
-            return cookie
+        raw = self.get("amazonmusic", "cookie")
         cookie_file = self.get("amazonmusic", "cookies_file")
-        if cookie_file and os.path.exists(cookie_file):
-            try:
-                with open(cookie_file, "r", encoding="utf-8") as f:
-                    return f.read().strip()
-            except Exception:
-                pass
-        return ""
+        source = raw or cookie_file or ""
+        cookies = parse_cookie_input(source)
+        return cookies_to_header_str(cookies)
+
+    def amazon_music_cookie_dict(self) -> Dict[str, str]:
+        raw = self.get("amazonmusic", "cookie")
+        cookie_file = self.get("amazonmusic", "cookies_file")
+        source = raw or cookie_file or ""
+        return parse_cookie_input(source)
 
     @property
     def amazon_music_access_token(self) -> str:

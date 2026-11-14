@@ -307,15 +307,7 @@ class JioSaavnPlatform(BasePlatform):
         return bool(config.jiosaavn_cookie)
 
     def _get_cookie_dict(self) -> Dict[str, str]:
-        raw = config.jiosaavn_cookie.strip()
-        cookie_dict = {}
-        # Parse Cookie: a=1; b=2
-        for part in raw.split(";"):
-            part = part.strip()
-            if "=" in part:
-                k, v = part.split("=", 1)
-                cookie_dict[k.strip()] = v.strip()
-        return cookie_dict
+        return config.jiosaavn_cookie_dict()
 
     def create_playlist(
         self,
@@ -356,11 +348,17 @@ class JioSaavnPlatform(BasePlatform):
         }
 
         resp = self._call(params, cookies=cookies)
-        if isinstance(resp, dict) and "error" in resp:
-            err = resp["error"]
-            raise PermissionError(f"JioSaavn playlist creation rejected: {err.get('msg', err)}")
+        if not isinstance(resp, dict):
+            raise ValueError(f"Unexpected response from JioSaavn: {resp}")
+        if resp.get("status") == "failure" or "error" in resp:
+            err = resp.get("error") or resp.get("msg") or "Operation rejected by JioSaavn"
+            if isinstance(err, dict):
+                err = err.get("msg", str(err))
+            raise PermissionError(f"JioSaavn playlist creation rejected: {err}")
 
-        playlist_id = resp.get("listid") or resp.get("id") or str(resp)
+        playlist_id = resp.get("listid") or resp.get("id")
+        if not playlist_id:
+            raise ValueError(f"JioSaavn did not return a valid playlist ID: {resp}")
         playlist_url = resp.get("perma_url") or f"https://www.jiosaavn.com/featured/{playlist_id}"
 
         logger.info(f"Created JioSaavn playlist {title} ({playlist_id})")

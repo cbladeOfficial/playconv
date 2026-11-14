@@ -141,11 +141,21 @@ def run_interactive_wizard():
             title="Destination Streaming Platform",
             subtitle="Select the service where matched tracks will be transferred",
         )
-        console.print("    [bold white on #b91c1c]  1  [/]  [bold bright_white]YouTube Music[/]   [dim]music.youtube.com (ytmusicapi)[/]   [bold white on #16a34a]  POPULAR  [/]")
-        console.print("    [bold white on #15803d]  2  [/]  [bold bright_white]Spotify[/]         [dim]open.spotify.com (requires Spotify Premium to create playlists)[/]")
-        console.print("    [bold white on #0284c7]  3  [/]  [bold bright_white]JioSaavn[/]        [dim]jiosaavn.com (session API)[/]")
-        console.print("    [bold white on #ea580c]  4  [/]  [bold bright_white]Amazon Music[/]    [dim]music.amazon.com (official client API)[/]")
-        console.print("    [bold white on #7c3aed]  5  [/]  [bold bright_white]CSV File[/]        [dim]Export structured metadata spreadsheet only[/]")
+        yt_ready = PLATFORM_REGISTRY[PlatformType.YTMUSIC].is_authenticated_for_writing()
+        sp_ready = PLATFORM_REGISTRY[PlatformType.SPOTIFY].is_authenticated_for_writing()
+        js_ready = PLATFORM_REGISTRY[PlatformType.JIOSAAVN].is_authenticated_for_writing()
+        amz_ready = PLATFORM_REGISTRY[PlatformType.AMAZON_MUSIC].is_authenticated_for_writing()
+
+        yt_badge = " [bold white on #16a34a]  READY  [/]" if yt_ready else " [dim](auth required to write)[/dim]"
+        sp_badge = " [bold white on #16a34a]  READY  [/]" if sp_ready else " [dim](requires Spotify Premium to write)[/dim]"
+        js_badge = " [bold white on #16a34a]  READY  [/]" if js_ready else " [dim](cookie needed to write)[/dim]"
+        amz_badge = " [bold white on #16a34a]  READY  [/]" if amz_ready else " [dim](cookie needed to write)[/dim]"
+
+        console.print(f"    [bold white on #b91c1c]  1  [/]  [bold bright_white]YouTube Music[/]   [dim]music.youtube.com[/]{yt_badge}")
+        console.print(f"    [bold white on #15803d]  2  [/]  [bold bright_white]Spotify[/]         [dim]open.spotify.com[/]{sp_badge}")
+        console.print(f"    [bold white on #0284c7]  3  [/]  [bold bright_white]JioSaavn[/]        [dim]jiosaavn.com[/]{js_badge}")
+        console.print(f"    [bold white on #ea580c]  4  [/]  [bold bright_white]Amazon Music[/]    [dim]music.amazon.com[/]{amz_badge}")
+        console.print("    [bold white on #7c3aed]  5  [/]  [bold bright_white]CSV File[/]        [dim]Export structured metadata spreadsheet only[/] [bold white on #16a34a]  NO AUTH NEEDED  [/]")
         console.print()
 
         dest_choice = Prompt.ask(
@@ -493,28 +503,38 @@ def run_auth_wizard(platform_str: str):
         render_step_header(
             step_num="AUTH",
             title="JioSaavn Authentication",
-            subtitle="Paste your session cookie string copied from DevTools (Network tab)",
+            subtitle="Paste your session cookie string or path to cookies.txt (from jiosaavn.com)",
             badge="JIOSAAVN",
             badge_color="#0284c7",
         )
-        cookie = Prompt.ask("  [bold #00f0ff]>[/] [bold white]JioSaavn Cookie string[/bold white] [dim](press Enter to skip)[/dim]", default=config.jiosaavn_cookie)
+        cookie = Prompt.ask("  [bold #00f0ff]>[/] [bold white]JioSaavn Cookie string or cookies.txt path[/bold white] [dim](press Enter to skip)[/dim]", default=config.jiosaavn_cookie)
         if cookie:
-            config.set("jiosaavn", "cookie", cookie.strip())
-            console.print("    [bold green]Saved JioSaavn session cookie.[/bold green]\n")
+            val = cookie.strip()
+            if os.path.isfile(val):
+                config.set("jiosaavn", "cookies_file", os.path.abspath(val))
+                console.print(f"    [bold green]Saved JioSaavn cookies file:[/] [bold cyan]{val}[/bold cyan]\n")
+            else:
+                config.set("jiosaavn", "cookie", val)
+                console.print("    [bold green]Saved JioSaavn session cookie.[/bold green]\n")
 
     # Amazon Music
     if plat in ("all", "amazonmusic", "amazon", "amz"):
         render_step_header(
             step_num="AUTH",
             title="Amazon Music Authentication",
-            subtitle="Paste your session cookie string copied from DevTools (music.amazon.com)",
+            subtitle="Paste your session cookie string or path to cookies.txt (from music.amazon.com)",
             badge="AMAZON",
             badge_color="#ea580c",
         )
-        cookie = Prompt.ask("  [bold #00f0ff]>[/] [bold white]Amazon Music Cookie string[/bold white] [dim](press Enter to skip)[/dim]", default=config.amazon_music_cookie)
+        cookie = Prompt.ask("  [bold #00f0ff]>[/] [bold white]Amazon Music Cookie string or cookies.txt path[/bold white] [dim](press Enter to skip)[/dim]", default=config.amazon_music_cookie)
         if cookie:
-            config.set("amazonmusic", "cookie", cookie.strip())
-            console.print("    [bold green]Saved Amazon Music session cookie.[/bold green]\n")
+            val = cookie.strip()
+            if os.path.isfile(val):
+                config.set("amazonmusic", "cookies_file", os.path.abspath(val))
+                console.print(f"    [bold green]Saved Amazon Music cookies file:[/] [bold cyan]{val}[/bold cyan]\n")
+            else:
+                config.set("amazonmusic", "cookie", val)
+                console.print("    [bold green]Saved Amazon Music session cookie.[/bold green]\n")
 
 
 @main.command("config")

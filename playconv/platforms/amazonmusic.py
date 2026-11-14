@@ -132,13 +132,18 @@ class AmazonMusicPlatform(BasePlatform):
 
         data_bytes = json.dumps(payload).encode("utf-8")
         req = urllib.request.Request(AMAZON_GQL_URL, data=data_bytes, headers=headers)
-        with self._opener.open(req, timeout=20) as resp:
-            body = resp.read().decode("utf-8", errors="ignore")
-            res = json.loads(body)
-            if "errors" in res and not res.get("data"):
-                err_msg = res["errors"][0].get("message", "GraphQL request failed")
-                raise ValueError(f"Amazon Music API error: {err_msg}")
-            return res.get("data", {})
+        try:
+            with self._opener.open(req, timeout=20) as resp:
+                body = resp.read().decode("utf-8", errors="ignore")
+                res = json.loads(body)
+                if "errors" in res and not res.get("data"):
+                    err_msg = res["errors"][0].get("message", "GraphQL request failed")
+                    raise ValueError(f"Amazon Music API error: {err_msg}")
+                return res.get("data", {})
+        except urllib.error.HTTPError as he:
+            if he.code in (401, 403):
+                raise PermissionError("Amazon Music session expired or unauthorized. Run 'playconv auth amazonmusic' to update session cookie.")
+            raise ValueError(f"Amazon Music HTTP {he.code}: {he.reason}")
 
     def can_handle_url(self, raw_input: str) -> Tuple[bool, ContentType, str]:
         raw_input = raw_input.strip()
@@ -576,7 +581,7 @@ class AmazonMusicPlatform(BasePlatform):
         if not self.is_authenticated_for_writing():
             raise PermissionError(
                 "Amazon Music playlist creation requires user session authentication.\n"
-                "Please run: playconv auth --platform amazonmusic\n"
+                "Please run: playconv auth amazonmusic\n"
                 "and paste your Amazon Music session cookie."
             )
 
