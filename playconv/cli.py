@@ -384,10 +384,16 @@ def run_auth_wizard(platform_str: str):
         method = Prompt.ask(
             "  [bold #00f0ff]>[/] [bold white]Select auth method[/bold white]",
             choices=["headers", "cookies", "skip"],
-            default="cookies" if os.path.exists("cookies_yt.txt") else "headers",
+            default="headers",
         )
 
         if method == "headers":
+            console.print(
+                "    [bold #38bdf8]How to get request headers from YouTube Music (takes 20s):[/]\n"
+                "    [dim]1. Open https://music.youtube.com in Chrome/Edge/Firefox and log in.\n"
+                "    2. Press F12 -> open Network tab -> click any playlist or song.\n"
+                "    3. Filter by 'browse' -> Right-click request -> Copy -> Copy request headers.[/dim]\n"
+            )
             console.print("  [dim]Paste your raw request headers below, then press Enter twice:[/dim]")
             lines = []
             while True:
@@ -405,7 +411,15 @@ def run_auth_wizard(platform_str: str):
                     auth_path = str(config.config_dir / "browser.json")
                     setup(filepath=auth_path, headers_raw=raw_headers)
                     config.set("ytmusic", "auth_file", auth_path)
-                    console.print(f"    [bold green]Saved YTMusic auth to:[/] [bold cyan]{auth_path}[/bold cyan]\n")
+                    console.print(f"    [bold green]Saved YTMusic auth to:[/] [bold cyan]{auth_path}[/bold cyan]")
+                    # Verify auth
+                    try:
+                        from ytmusicapi import YTMusic
+                        test_yt = YTMusic(auth=auth_path)
+                        test_yt.get_library_playlists(limit=1)
+                        console.print("    [bold green]Verified:[/] Successfully connected to your YouTube Music account!\n")
+                    except Exception as ve:
+                        console.print(f"    [bold yellow]Notice:[/] Saved, but verification check returned: {ve}\n")
                 except Exception as e:
                     console.print(f"    [bold red]Failed to setup YTMusic headers:[/bold red] {e}\n")
 
@@ -414,7 +428,8 @@ def run_auth_wizard(platform_str: str):
             c_file = Prompt.ask("  [bold #00f0ff]>[/] [bold white]Path to cookies.txt[/bold white]", default=default_cookie)
             if c_file and os.path.exists(c_file):
                 config.set("ytmusic", "cookies_file", os.path.abspath(c_file))
-                console.print(f"    [bold green]Saved YTMusic cookies file:[/] [bold cyan]{c_file}[/bold cyan]\n")
+                console.print(f"    [bold green]Saved YTMusic cookies file:[/] [bold cyan]{c_file}[/bold cyan]")
+                console.print("    [dim]Note: If YouTube Music returns 401 Unauthorized, please re-run using 'headers' method.[/dim]\n")
             else:
                 console.print("    [dim]Cookies file not found. Skipped.[/dim]\n")
 

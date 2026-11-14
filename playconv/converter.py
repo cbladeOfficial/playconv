@@ -197,7 +197,7 @@ class PlaylistConverter:
                     )
                     summary.created_playlist_id = pl_id
                     summary.created_playlist_url = pl_url
-                    console.print(f"    [bold green]Playlist provisioned successfully:[/] [bold underline cyan]{pl_url}[/bold underline cyan]\n")
+                    console.print(f"    [bold green]Playlist provisioned successfully:[/] [link={pl_url}][bold underline cyan]{pl_url}[/bold underline cyan][/link]\n")
                 except PermissionError as pe:
                     summary.playlist_error = f"Authentication required (run: playconv auth {destination_platform.value})"
                     console.print(f"\n  [bold white on #b91c1c]  AUTHENTICATION REQUIRED  [/]\n  [dim]{pe}[/dim]")

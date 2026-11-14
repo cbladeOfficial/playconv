@@ -373,12 +373,21 @@ class YTMusicPlatform(BasePlatform):
         desc = description or "Created with PlayConv"
         # Create playlist with the first batch (up to 50 tracks)
         initial_ids = video_ids[:50]
-        playlist_id = self._auth_client.create_playlist(
-            title=title,
-            description=desc,
-            privacy_status="PUBLIC",
-            video_ids=initial_ids,
-        )
+        try:
+            res = self._auth_client.create_playlist(
+                title=title,
+                description=desc,
+                privacy_status="PUBLIC",
+                video_ids=initial_ids,
+            )
+        except Exception as e:
+            raise PermissionError(f"YouTube Music playlist creation rejected by server: {e}")
+
+        if not isinstance(res, str):
+            err_msg = res.get("error", {}).get("message") if isinstance(res, dict) else str(res)
+            raise ValueError(f"YouTube Music rejected playlist creation: {err_msg}")
+
+        playlist_id = res
 
         # Append remaining tracks if more than 50
         remaining_ids = video_ids[50:]

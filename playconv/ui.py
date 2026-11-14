@@ -342,7 +342,7 @@ def show_final_summary(summary: ConversionSummary, elapsed_seconds: float = 0.0)
         if summary.matched_album_url:
             summary_table.add_row(
                 make_badge("ALBUM LINK", "#0284c7", 18),
-                f"[bold underline #38bdf8]{summary.matched_album_url}[/bold underline #38bdf8]",
+                f"[link={summary.matched_album_url}][bold underline #38bdf8]{summary.matched_album_url}[/bold underline #38bdf8][/link]",
             )
     if summary.exact_match_count > 0 and not summary.is_exact_album_conversion:
         summary_table.add_row(
@@ -357,7 +357,7 @@ def show_final_summary(summary: ConversionSummary, elapsed_seconds: float = 0.0)
     if summary.created_playlist_url and not summary.is_exact_album_conversion:
         summary_table.add_row(
             make_badge("PLAYLIST URL", "#0284c7", 18),
-            f"[bold underline #38bdf8]{summary.created_playlist_url}[/bold underline #38bdf8]",
+            f"[link={summary.created_playlist_url}][bold underline #38bdf8]{summary.created_playlist_url}[/bold underline #38bdf8][/link]",
         )
     elif summary.playlist_error and not summary.is_exact_album_conversion:
         summary_table.add_row(
@@ -365,9 +365,11 @@ def show_final_summary(summary: ConversionSummary, elapsed_seconds: float = 0.0)
             f"[bold red]Not Created:[/] [bold bright_white]{summary.playlist_error}[/]",
         )
     if summary.exported_csv_path:
+        abs_csv = os.path.abspath(summary.exported_csv_path)
+        file_url = f"file:///{abs_csv.replace(os.sep, '/')}"
         summary_table.add_row(
             make_badge("CSV RECORD", "#9333ea", 18),
-            f"[bold bright_magenta]{os.path.abspath(summary.exported_csv_path)}[/bold bright_magenta]",
+            f"[link={file_url}][bold bright_magenta]{abs_csv}[/bold bright_magenta][/link]",
         )
     if elapsed_seconds > 0:
         mins, secs = divmod(int(elapsed_seconds), 60)
