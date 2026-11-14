@@ -185,9 +185,11 @@ class PlaylistConverter:
                     summary.created_playlist_url = pl_url
                     console.print(f"    [bold green]Playlist provisioned successfully:[/] [bold underline cyan]{pl_url}[/bold underline cyan]\n")
                 except PermissionError as pe:
+                    summary.playlist_error = "Authentication required (run: playconv auth)"
                     console.print(f"\n  [bold white on #b91c1c]  AUTHENTICATION REQUIRED  [/]\n  [dim]{pe}[/dim]")
                     console.print(f"  [dim]All matched track links and metadata have been preserved in: {summary.exported_csv_path}[/dim]\n")
                 except Exception as e:
+                    summary.playlist_error = str(e)
                     console.print(f"    [bold red]Failed to create playlist on {destination_platform.value.upper()}:[/bold red] {e}\n")
 
         show_final_summary(summary, elapsed_seconds=time.time() - start_time)

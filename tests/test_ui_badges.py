@@ -42,3 +42,15 @@ def test_show_final_summary_runs():
         created_playlist_url="https://music.youtube.com/playlist?list=xyz",
     )
     show_final_summary(summary, elapsed_seconds=42.5)
+
+    # Test summary when playlist creation failed (auth required)
+    summary_err = ConversionSummary(
+        source_name="Test Playlist",
+        destination_platform=PlatformType.YTMUSIC,
+        total_tracks=10,
+        matched_count=10,
+        exact_match_count=10,
+        playlist_error="Authentication required (run: playconv auth)",
+        exported_csv_path="test_export.csv",
+    )
+    show_final_summary(summary_err, elapsed_seconds=12.0)

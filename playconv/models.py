@@ -145,6 +145,7 @@ class ConversionSummary:
     exact_match_count: int = 0
     created_playlist_id: Optional[str] = None
     created_playlist_url: Optional[str] = None
+    playlist_error: Optional[str] = None
     exported_csv_path: Optional[str] = None
     is_exact_album_conversion: bool = False
     matched_album_title: Optional[str] = None

@@ -331,7 +331,7 @@ def show_final_summary(summary: ConversionSummary, elapsed_seconds: float = 0.0)
         f"[bold #c084fc]{summary.destination_platform.value.upper()}[/bold #c084fc]",
     )
     summary_table.add_row(
-        make_badge("COMPLETE", "#16a34a", 18),
+        make_badge("TRACKS MATCHED", "#16a34a", 18),
         f"[bold bright_green]{summary.matched_count}[/] / [bold bright_white]{summary.total_tracks}[/] tracks matched ([bold #4ade80]{summary.match_rate:.1f}%[/])",
     )
     if summary.is_exact_album_conversion:
@@ -359,6 +359,11 @@ def show_final_summary(summary: ConversionSummary, elapsed_seconds: float = 0.0)
         summary_table.add_row(
             make_badge("PLAYLIST URL", "#0284c7", 18),
             f"[bold underline #38bdf8]{summary.created_playlist_url}[/bold underline #38bdf8]",
+        )
+    elif summary.playlist_error and not summary.is_exact_album_conversion:
+        summary_table.add_row(
+            make_badge("PLAYLIST STATUS", "#b91c1c", 18),
+            f"[bold red]Not Created:[/] [bold bright_white]{summary.playlist_error}[/]",
         )
     if summary.exported_csv_path:
         summary_table.add_row(
