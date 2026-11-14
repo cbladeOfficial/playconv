@@ -32,3 +32,6 @@ venv.bak/
 *.m3u
 *.m3u8
 *.spec
+cookies*.txt
+*.cookies
+

@@ -142,7 +142,7 @@ def run_interactive_wizard():
             subtitle="Select the service where matched tracks will be transferred",
         )
         console.print("    [bold white on #b91c1c]  1  [/]  [bold bright_white]YouTube Music[/]   [dim]music.youtube.com (ytmusicapi)[/]   [bold white on #16a34a]  POPULAR  [/]")
-        console.print("    [bold white on #15803d]  2  [/]  [bold bright_white]Spotify[/]         [dim]open.spotify.com (Spotipy API)[/]")
+        console.print("    [bold white on #15803d]  2  [/]  [bold bright_white]Spotify[/]         [dim]open.spotify.com (requires Spotify Premium to create playlists)[/]")
         console.print("    [bold white on #0284c7]  3  [/]  [bold bright_white]JioSaavn[/]        [dim]jiosaavn.com (session API)[/]")
         console.print("    [bold white on #ea580c]  4  [/]  [bold bright_white]Amazon Music[/]    [dim]music.amazon.com (official client API)[/]")
         console.print("    [bold white on #7c3aed]  5  [/]  [bold bright_white]CSV File[/]        [dim]Export structured metadata spreadsheet only[/]")
@@ -214,7 +214,7 @@ def run_interactive_wizard():
             subtitle="Target platform to create playlist on",
         )
         console.print("    [bold white on #b91c1c]  1  [/]  [bold bright_white]YouTube Music[/]")
-        console.print("    [bold white on #15803d]  2  [/]  [bold bright_white]Spotify[/]")
+        console.print("    [bold white on #15803d]  2  [/]  [bold bright_white]Spotify[/]  [dim](requires Spotify Premium)[/dim]")
         console.print("    [bold white on #0284c7]  3  [/]  [bold bright_white]JioSaavn[/]")
         console.print()
         dest_choice = Prompt.ask(
@@ -413,39 +413,80 @@ def run_auth_wizard(platform_str: str):
         render_step_header(
             step_num="AUTH",
             title="Spotify Authentication",
-            subtitle="Spotify Developer App Client ID and Secret (Redirect URI: http://127.0.0.1:8888/callback)",
+            subtitle="Choose Zero-Config Free Mode or configure Spotify Developer credentials",
             badge="SPOTIFY",
             badge_color="#15803d",
         )
-        cur_id = config.spotify_client_id
-        cur_sec = config.spotify_client_secret
-        cid = Prompt.ask("  [bold #00f0ff]>[/] [bold white]Spotify Client ID[/bold white]", default=cur_id)
-        csec = Prompt.ask("  [bold #00f0ff]>[/] [bold white]Spotify Client Secret[/bold white]", default=cur_sec)
+        console.print(
+            "    [bold #38bdf8]NOTE:[/] Spotify Web API requires an active Spotify Premium subscription for Developer Apps.\n"
+            "    [dim]You DO NOT need Spotify Premium or any API keys to read, export, or convert FROM Spotify.\n"
+            "    PlayConv extracts tracks and metadata from public Spotify URLs automatically with zero credentials.[/dim]\n"
+        )
+        console.print("    [bold white on #16a34a]  1  [/]  [bold bright_white]Use Zero-Config Free Mode[/] [dim](Recommended - no Spotify Premium or API keys needed)[/]")
+        console.print("    [bold white on #475569]  2  [/]  [bold bright_white]Configure Developer App[/]   [dim](Requires Spotify Premium account)[/]")
+        console.print("    [bold white on #475569]  3  [/]  [bold bright_white]Clear Saved Credentials[/]  [dim](Reset to zero-config mode)[/]")
+        console.print()
+        sp_choice = Prompt.ask("  [bold #00f0ff]>[/] [bold white]Choose Spotify mode [1-3][/bold white]", choices=["1", "2", "3"], default="1")
 
-        if cid:
-            config.set("spotify", "client_id", cid.strip())
-        if csec:
-            config.set("spotify", "client_secret", csec.strip())
-
-        if cid and csec:
-            if Confirm.ask("  [bold #00f0ff]>[/] [bold white]Authenticate with Spotify now in browser?[/bold white]", default=True):
+        if sp_choice in ("1", "3"):
+            config.set("spotify", "client_id", "")
+            config.set("spotify", "client_secret", "")
+            if os.path.exists(config.spotify_token_cache):
                 try:
-                    import spotipy
-                    from spotipy.oauth2 import SpotifyOAuth
-                    from .platforms.spotify import SPOTIFY_SCOPES
-                    sp_oauth = SpotifyOAuth(
-                        client_id=cid.strip(),
-                        client_secret=csec.strip(),
-                        redirect_uri=config.spotify_redirect_uri,
-                        scope=SPOTIFY_SCOPES,
-                        cache_path=config.spotify_token_cache,
-                        open_browser=True,
-                    )
-                    sp = spotipy.Spotify(auth_manager=sp_oauth)
-                    user = sp.me()
-                    console.print(f"    [bold green]Successfully authenticated as Spotify user:[/] [bold cyan]{user.get('display_name')}[/bold cyan]\n")
-                except Exception as e:
-                    console.print(f"    [bold red]Spotify auth failed:[/bold red] {e}\n")
+                    os.remove(config.spotify_token_cache)
+                except Exception:
+                    pass
+            if sp_choice == "1":
+                console.print("    [bold green]Zero-Config mode active. No Spotify Premium required to read/export Spotify playlists.[/bold green]\n")
+            else:
+                console.print("    [bold green]Cleared Spotify credentials and token cache.[/bold green]\n")
+
+        elif sp_choice == "2":
+            cur_id = config.spotify_client_id
+            cur_sec = config.spotify_client_secret
+            cid = Prompt.ask("  [bold #00f0ff]>[/] [bold white]Spotify Client ID[/bold white]", default=cur_id).strip()
+            csec = Prompt.ask("  [bold #00f0ff]>[/] [bold white]Spotify Client Secret[/bold white]", default=cur_sec).strip()
+
+            if cid:
+                config.set("spotify", "client_id", cid)
+            if csec:
+                config.set("spotify", "client_secret", csec)
+
+            if cid and csec:
+                if Confirm.ask("  [bold #00f0ff]>[/] [bold white]Authenticate with Spotify now in browser?[/bold white]", default=True):
+                    try:
+                        import spotipy
+                        from spotipy.oauth2 import SpotifyOAuth
+                        from .platforms.spotify import SPOTIFY_SCOPES
+                        sp_oauth = SpotifyOAuth(
+                            client_id=cid,
+                            client_secret=csec,
+                            redirect_uri=config.spotify_redirect_uri,
+                            scope=SPOTIFY_SCOPES,
+                            cache_path=config.spotify_token_cache,
+                            open_browser=True,
+                        )
+                        sp = spotipy.Spotify(auth_manager=sp_oauth)
+                        user = sp.me()
+                        console.print(f"    [bold green]Successfully authenticated as Spotify user:[/] [bold cyan]{user.get('display_name')}[/bold cyan]\n")
+                    except Exception as e:
+                        err_str = str(e)
+                        if "Active premium subscription required" in err_str or "403" in err_str:
+                            console.print(
+                                "\n    [bold #d97706]SPOTIFY PREMIUM RESTRICTION DETECTED[/bold #d97706]\n"
+                                "    [dim]Spotify's developer policy mandates paid Spotify Premium for Developer Apps.\n"
+                                "    Since your account does not have Premium, PlayConv has automatically cleared\n"
+                                "    these credentials and reverted to 100% free zero-config mode.[/dim]\n"
+                            )
+                            config.set("spotify", "client_id", "")
+                            config.set("spotify", "client_secret", "")
+                            if os.path.exists(config.spotify_token_cache):
+                                try:
+                                    os.remove(config.spotify_token_cache)
+                                except Exception:
+                                    pass
+                        else:
+                            console.print(f"    [bold red]Spotify auth failed:[/bold red] {e}\n")
 
     # JioSaavn
     if plat in ("all", "jiosaavn"):

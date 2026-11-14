@@ -20,6 +20,8 @@ from ..models import ContentType, PlatformType, PlaylistMetadata, Track
 from .base import BasePlatform
 
 logger = logging.getLogger(__name__)
+# Silence verbose 403 logs from Spotipy internal logger
+logging.getLogger("spotipy.client").setLevel(logging.ERROR)
 
 SPOTIFY_SCOPES = "playlist-modify-public playlist-modify-private user-library-read"
 EMBED_HEADERS = {
@@ -38,9 +40,23 @@ class SpotifyPlatform(BasePlatform):
     def __init__(self):
         self._sp_client: Optional[spotipy.Spotify] = None
         self._sp_oauth_client: Optional[spotipy.Spotify] = None
+        self._credentials_disabled: bool = False
         self._init_clients()
 
+    def _handle_api_error(self, e: Exception) -> None:
+        """Handles API errors and auto-disables credentials if Spotify Premium is required."""
+        msg = str(e)
+        if "Active premium subscription required" in msg or "403" in msg:
+            self._credentials_disabled = True
+            self._sp_client = None
+            self._sp_oauth_client = None
+            logger.info("Spotify API credentials require an active Spotify Premium subscription. Switching to zero-config public mode.")
+        else:
+            logger.warning(f"Spotify API client error: {e}; falling back to Embed scraper")
+
     def _init_clients(self) -> None:
+        if self._credentials_disabled:
+            return
         client_id = config.spotify_client_id
         client_secret = config.spotify_client_secret
 
@@ -125,8 +141,8 @@ class SpotifyPlatform(BasePlatform):
         _, _, playlist_id = self.can_handle_url(identifier_or_url)
         playlist_id = playlist_id or identifier_or_url.strip()
 
-        # If Spotify API client is available, use it (supports pagination > 100 tracks)
-        client = self._sp_oauth_client or self._sp_client
+        # If Spotify API client is available, try it (supports pagination > 100 tracks)
+        client = None if self._credentials_disabled else (self._sp_oauth_client or self._sp_client)
         if client:
             try:
                 pl_data = client.playlist(playlist_id, fields="name,description,owner,images,tracks.total")
@@ -185,7 +201,7 @@ class SpotifyPlatform(BasePlatform):
                     tracks=tracks,
                 )
             except Exception as e:
-                logger.warning(f"Spotify API client error: {e}; falling back to Embed scraper")
+                self._handle_api_error(e)
 
         # Fallback to Embed Scraper
         entity = self._fetch_embed_data("playlist", playlist_id)
@@ -233,7 +249,7 @@ class SpotifyPlatform(BasePlatform):
         _, _, album_id = self.can_handle_url(identifier_or_url)
         album_id = album_id or identifier_or_url.strip()
 
-        client = self._sp_oauth_client or self._sp_client
+        client = None if self._credentials_disabled else (self._sp_oauth_client or self._sp_client)
         if client:
             try:
                 alb = client.album(album_id)
@@ -283,7 +299,7 @@ class SpotifyPlatform(BasePlatform):
                     tracks=tracks,
                 )
             except Exception as e:
-                logger.warning(f"Spotify album API call failed: {e}; falling back to Embed")
+                self._handle_api_error(e)
 
         entity = self._fetch_embed_data("album", album_id)
         title = entity.get("title") or entity.get("name") or "Spotify Album"
@@ -325,7 +341,7 @@ class SpotifyPlatform(BasePlatform):
         _, _, track_id = self.can_handle_url(identifier_or_url)
         track_id = track_id or identifier_or_url.strip()
 
-        client = self._sp_oauth_client or self._sp_client
+        client = None if self._credentials_disabled else (self._sp_oauth_client or self._sp_client)
         if client:
             try:
                 tr = client.track(track_id)
@@ -352,7 +368,7 @@ class SpotifyPlatform(BasePlatform):
                     image_url=album_art,
                 )
             except Exception as e:
-                logger.warning(f"Spotify track API error: {e}; falling back to embed")
+                self._handle_api_error(e)
 
         entity = self._fetch_embed_data("track", track_id)
         title = entity.get("title") or entity.get("name") or ""
@@ -372,9 +388,8 @@ class SpotifyPlatform(BasePlatform):
         )
 
     def search_track(self, track: Track, limit: int = 5) -> List[Track]:
-        client = self._sp_oauth_client or self._sp_client
+        client = None if self._credentials_disabled else (self._sp_oauth_client or self._sp_client)
         if not client:
-            logger.warning("Spotify client credentials needed for Spotify search. Configure via: playconv auth spotify")
             return []
 
         candidates: List[Track] = []
@@ -399,7 +414,7 @@ class SpotifyPlatform(BasePlatform):
                         )
                     )
             except Exception as e:
-                logger.debug(f"ISRC search failed on Spotify: {e}")
+                self._handle_api_error(e)
 
         # 2. Search by title + artist
         from ..matcher import clean_title
@@ -407,35 +422,36 @@ class SpotifyPlatform(BasePlatform):
         primary = track.primary_artist or (track.artists[0] if track.artists else "")
         query = f"track:{cleaned} artist:{primary}" if primary else cleaned
         try:
-            res = client.search(q=query, type="track", limit=limit)
-            items = res.get("tracks", {}).get("items", [])
-            if not items:
-                # Broader search without field filters
-                res = client.search(q=f"{cleaned} {primary}".strip(), type="track", limit=limit)
+            if not self._credentials_disabled and client:
+                res = client.search(q=query, type="track", limit=limit)
                 items = res.get("tracks", {}).get("items", [])
+                if not items:
+                    # Broader search without field filters
+                    res = client.search(q=f"{cleaned} {primary}".strip(), type="track", limit=limit)
+                    items = res.get("tracks", {}).get("items", [])
 
-            for tr in items:
-                artists_list = [a.get("name") for a in tr.get("artists", []) if a.get("name")]
-                candidates.append(
-                    Track(
-                        title=tr.get("name") or "",
-                        artists=artists_list,
-                        primary_artist=artists_list[0] if artists_list else "",
-                        album=tr.get("album", {}).get("name") or "",
-                        duration_sec=int(tr.get("duration_ms", 0) // 1000),
-                        isrc=tr.get("external_ids", {}).get("isrc"),
-                        source_platform=PlatformType.SPOTIFY,
-                        source_id=tr.get("id"),
-                        source_url=f"https://open.spotify.com/track/{tr.get('id')}",
+                for tr in items:
+                    artists_list = [a.get("name") for a in tr.get("artists", []) if a.get("name")]
+                    candidates.append(
+                        Track(
+                            title=tr.get("name") or "",
+                            artists=artists_list,
+                            primary_artist=artists_list[0] if artists_list else "",
+                            album=tr.get("album", {}).get("name") or "",
+                            duration_sec=int(tr.get("duration_ms", 0) // 1000),
+                            isrc=tr.get("external_ids", {}).get("isrc"),
+                            source_platform=PlatformType.SPOTIFY,
+                            source_id=tr.get("id"),
+                            source_url=f"https://open.spotify.com/track/{tr.get('id')}",
+                        )
                     )
-                )
         except Exception as e:
-            logger.error(f"Spotify search failed for '{query}': {e}")
+            self._handle_api_error(e)
 
         return candidates
 
     def search_album(self, title: str, artist: str, limit: int = 5) -> List[PlaylistMetadata]:
-        client = self._sp_oauth_client or self._sp_client
+        client = None if self._credentials_disabled else (self._sp_oauth_client or self._sp_client)
         if not client:
             return []
 
@@ -460,18 +476,21 @@ class SpotifyPlatform(BasePlatform):
                     except Exception as e:
                         logger.debug(f"Failed to fetch Spotify album {album_id}: {e}")
         except Exception as e:
-            logger.debug(f"Spotify album search failed: {e}")
+            self._handle_api_error(e)
 
         return albums
 
     def is_authenticated_for_writing(self) -> bool:
+        if self._credentials_disabled:
+            return False
         self._init_clients()
         if not self._sp_oauth_client:
             return False
         try:
             self._sp_oauth_client.me()
             return True
-        except Exception:
+        except Exception as e:
+            self._handle_api_error(e)
             return False
 
     def create_playlist(
@@ -482,8 +501,8 @@ class SpotifyPlatform(BasePlatform):
     ) -> Tuple[str, str]:
         if not self.is_authenticated_for_writing():
             raise PermissionError(
-                "Spotify playlist creation requires user OAuth authentication.\n"
-                "Please configure Spotify credentials using: playconv auth spotify"
+                "Spotify playlist creation requires an active Spotify Premium subscription on your developer account.\n"
+                "If you do not have Spotify Premium, convert to YouTube Music, JioSaavn, Amazon Music, or CSV instead."
             )
 
         user_info = self._sp_oauth_client.me()
