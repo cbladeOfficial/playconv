@@ -20,7 +20,7 @@ from .config import config
 from .converter import PlaylistConverter
 from .csv_handler import CSVHandler
 from .models import PlatformType
-from .platforms import resolve_source_to_playlist
+from .platforms import PLATFORM_REGISTRY, get_platform, resolve_source_to_playlist
 from .ui import (
     console,
     display_collection_header,
@@ -141,10 +141,10 @@ def run_interactive_wizard():
             title="Destination Streaming Platform",
             subtitle="Select the service where matched tracks will be transferred",
         )
-        yt_ready = PLATFORM_REGISTRY[PlatformType.YTMUSIC].is_authenticated_for_writing()
-        sp_ready = PLATFORM_REGISTRY[PlatformType.SPOTIFY].is_authenticated_for_writing()
-        js_ready = PLATFORM_REGISTRY[PlatformType.JIOSAAVN].is_authenticated_for_writing()
-        amz_ready = PLATFORM_REGISTRY[PlatformType.AMAZON_MUSIC].is_authenticated_for_writing()
+        yt_ready = get_platform(PlatformType.YTMUSIC).is_authenticated_for_writing()
+        sp_ready = get_platform(PlatformType.SPOTIFY).is_authenticated_for_writing()
+        js_ready = get_platform(PlatformType.JIOSAAVN).is_authenticated_for_writing()
+        amz_ready = get_platform(PlatformType.AMAZON_MUSIC).is_authenticated_for_writing()
 
         yt_badge = " [bold white on #16a34a]  READY  [/]" if yt_ready else " [dim](auth required to write)[/dim]"
         sp_badge = " [bold white on #16a34a]  READY  [/]" if sp_ready else " [dim](requires Spotify Premium to write)[/dim]"
